@@ -60,6 +60,16 @@ var U = {
 		}
 		n += min;
 		return n;
+	},
+	/**
+	 * @description Возвращает percent от percents100
+	 * @param {Number} percent
+	 * @param {Number} percents100
+	 * @return {Number} percent процентов от величины percents100
+	*/
+	getPercents:function(percent, percents100) {
+		var one = percents100 / 100;
+		return (percent * one);
 	}
 }
 //===================DisplayObjects=====================================
@@ -114,6 +124,19 @@ Sprite.prototype.hitTest = function (sprite, info) {
 		}
 	}
 	return flag;
+}
+/**
+ * @description
+ * @param {Number} x
+ * @param {Number} y
+ * @return true если точка пересекается с объектом
+*/
+Sprite.prototype.hitTestPoint = function (x, y) {
+	var o = this;
+	if (o.x <= x && (o.x + o.w) >= x && o.y <= y && (o.y + o.h) >= y) {
+		return true;
+	}
+	return false;
 }
 /**
  * @description Клонировать клип
@@ -205,6 +228,8 @@ function SimpleEngine2D (canvasId, fps) {
 		this.test = '000';
 		this.c = o.getContext("2d");
 		this.canvas = o;
+		this.canvas.onclick = this.onclick;
+		//this.canvas.ontouch = this.ontouch; //TODO
 		this.w = o.width;
 		this.h = o.height;
 		this.fps = fps;
@@ -254,6 +279,12 @@ SimpleEngine2D.prototype.addRastr = function (src, rastrId) {
  * @param Aray args - массив строк, каждый первый аргумент - путь к изображению, каждый второй - идентификатор клипа в объекте SE2D._root
  */
 SimpleEngine2D.prototype.addGraphResources = function (args) {
+	//TODO доработать для возможности передавать анимацию
+	//каждый первый элемент может быть массивом путей
+	//здесь просто приводим его к формату чет - путь, нечет - id
+	//А в onLoadImages если такой se2d._root[img.id] уже есть
+	//просто добавляем очередной кадр se2d._root[img.id].addFrame(img);
+	
 	var sz = U.sz(args), i = 0, half = sz / 2;
 	/*console.log(half + ", " + Math.round(half) + ", " + sz);
 	console.log(args);*/
@@ -309,6 +340,35 @@ SimpleEngine2D.prototype.orderImagesByDepth = function () {
 				var b = SE2D.sprites[i];
 				SE2D.sprites[i] = SE2D.sprites[j];
 				SE2D.sprites[j] = b;
+			}
+		}
+	}
+}
+/**
+ * @description Установить реакции на клик или тач для перечисленых клипов 
+ * @param Array names список имен клипов
+*/
+SimpleEngine2D.prototype.setButtons = function (names) {
+	var i;
+	for (i = 0; i < U.sz(names); i++) {
+		if (this._root[names[i]]) {
+			this._root[names[i]].is_button = 1;
+		}
+	}
+}
+/**
+ * @description Установить реакции на клик или тач для клипов с is_button = 1;
+ * @param Array names список имен клипов
+*/
+SimpleEngine2D.prototype.onclick = function (e) {
+	var x = e.clientX - SE2D.canvas.offsetLeft,
+		y = e.clientY - SE2D.canvas.offsetTop,
+		mc, i;
+	for (i = 0; i < U.sz(SE2D.sprites); i++) {
+		mc = SE2D.sprites[i];
+		if (mc && mc.is_button == 1) {
+			if (mc.onclick instanceof Function && mc.hitTestPoint(x, y)) {
+				mc.onclick({x:x, y:y, target:mc});
 			}
 		}
 	}
