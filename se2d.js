@@ -62,6 +62,12 @@ var U = {
 		return n;
 	},
 	/**
+	 * @description php time()
+	*/
+	time:function() {
+		return parseInt(new Date().getTime()/1000);
+	},
+	/**
 	 * @description Возвращает percent от percents100
 	 * @param {Number} percent
 	 * @param {Number} percents100
@@ -357,7 +363,7 @@ SimpleEngine2D.prototype.setButtons = function (names) {
 	}
 }
 /**
- * @description Установить реакции на клик или тач для клипов с is_button = 1;
+ * @description Установить реакции на клик или тач для клипов с is_button = 1; this is SE2D.canvas
  * @param Array names список имен клипов
 */
 SimpleEngine2D.prototype.onclick = function (e) {
@@ -370,6 +376,30 @@ SimpleEngine2D.prototype.onclick = function (e) {
 			if (mc.onclick instanceof Function && mc.hitTestPoint(x, y)) {
 				mc.onclick({x:x, y:y, target:mc});
 			}
+		}
+	}
+}
+/**
+ * @description Удалить клип
+ * @param {String}|{Sprite} id
+*/
+SimpleEngine2D.prototype.remove = function (id) {
+	var i, copy = [];
+	if (!(id instanceof Sprite)) {
+		id = SE2D._root[id];
+	}
+	if (!(id instanceof Sprite)) {
+		return;
+	}
+	for (i = 0; i < SE2D.sprites.length; i++) {
+		if (SE2D.sprites[i] != id) {
+			copy.push(SE2D.sprites[i]);
+		}
+	}
+	SE2D.sprites = copy;
+	for (i in SE2D._root) {
+		if (SE2D._root[i] == id) {
+			delete SE2D._root[i];
 		}
 	}
 }
