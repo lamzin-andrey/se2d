@@ -78,6 +78,182 @@ var U = {
 		return (percent * one);
 	}
 }
+//===================Graphics=====================================
+/**
+ *
+*/
+function Graphics(parent) {
+	var TYPE_POINT = 1,
+		TYPE_RECT  = 2;
+	/** @property Array _objects Содержит объекты (ассоциативные массивы) типа точки линий и четырехугольники
+     * item[type=TYPE_POINT]: type, x, y, color, fill_color, thikness, is_start, is_begin_fill, is_end_fill
+     * *  is_start 1 если был вызван moveTo
+     * item[type=TYPE_RECT] : type, x, y, w, h, color, fill_color, thikness
+    */
+	this._objects = [];
+	/** @property {Object} _last_object @see item of _objects*/
+	/** @property {Number} color Текущий цвет */
+	this._color = 0x000000
+	/** @property {Number} _fill_color Текущий цвет заливки*/
+	this._fill_color = 0xFFFFFF;
+	/** @property {Number} _thikness Текущая толщина*/
+	this._thikness = 0.25;
+	/** @property {Number} _new_color Новый цвет*/
+	/** @property {Number} _new_fill_color Новый цвет заливки */
+	/** @property {Number} _new_thikness Новая толщина */
+	/** @property {Boolean} _is_begin_fill True if begin */
+	this._is_begin_fill = false;
+	/** @property {Boolean} _is_end_fill True if end */
+	this._is_end_fill = false;
+	/** @property {Sprite} _parent ссылка на отображаемый объект, с целью вычислять его размер при отрисовке линий */
+	this._parent = parent;
+}
+Graphics.prototype.lineTo = function (x, y) {
+	var o = this._last_object, params = {}, item;
+	if (!o) {
+		Error('need call moveTo before drawLine');
+	}
+	if (o.type == this.TYPE_RECT) {
+		Error('need call moveTo before drawRect');
+	}
+	t = this.TYPE_POINT;
+	//$clr, $thi
+	this._applyLineStyle(params);
+	if (params.clr == o.color) {
+		params.clr = null;
+	}
+	if (params.thi == o.thikness) {
+		params.thi = null;
+	}
+	if (this._parent.width < x) {
+		this.parent.width = x;
+	}
+	if (this._parent.height < y) {
+		this._parent.height = y;
+	}
+	item = this._createPoint(t, x, y, params.clr, params.thi);
+	this._last_object = item;
+	this._objects.push(item);
+}
+Graphics.prototype.moveTo = function (x, y) {
+	var t = this.TYPE_POINT, params = {}, point, o;
+	this._applyLineStyle(params);
+	point = this._createPoint(t, x, y, params.clr, params.thi, true);
+	o = this._last_object;
+	//пока забил на оптимизацию
+	/*if ($o && isset($o['is_start'])) { //rewrite
+		$i = count($this->_objects) - 1;
+		$this->_objects[$i] = $point;
+	} else {//append
+		$this->_objects[] = $point;
+	}*/
+	this._objects.push(point);
+	this._last_object = point;
+}
+Graphics.prototype.drawRect = function (x, y, width, height) {
+	var o = {
+		type  : this.TYPE_RECT,
+		x     : x,
+		y     : y,
+		w     : width,
+		h     : height,
+		color: this._color,
+		thikness: this._thikness,
+		fill_color: this._is_begin_fill && !this._is_end_fill ?  this._fill_color : false
+	};
+	this._objects.push(o);
+	this._last_object = o;
+	
+	if (this._parent.width < x + width) {
+		this._parent.width = x + width;
+	}
+	if (this._parent.height < y + height) {
+		this._parent.height = y + height;
+	}
+}
+
+Graphics.prototype.beginFill = function (color) {
+	this._fill_color = color;
+	this._is_begin_fill = true;
+	this._is_end_fill = false;
+}
+Graphics.prototype.setLineStyle = function(thikness, color) {
+	this._new_color = color;
+	this._new_thikness = thikness;
+}
+/***
+ * @param float $thikness
+ * @param uint  $color
+ * @param float $alpha
+ * @param boolean $pixelHinting = false
+ * @param string $scaleMode = 'normal'
+ * @param string $caps = null
+ * @param string $joints = null
+ * @param int $miterLimit = 3
+ * @return void
+*/
+Graphics.prototype.lineStyle = function(thikness, color) {
+	this.setLineStyle(thikness, color);
+}
+Graphics.prototype.endFill = function() {
+	//пока забил на оптимизацию
+	this._is_end_fill = true;
+	/*$o = $this->_objects;
+	if ($this->_objects && is_array($o)) {
+		$c = count($o);
+		if ($c && $o[$c - 1]['type'] == self::TYPE_POINT) {
+			$this->_objects[$c - 1]['is_end_fill'] = true;
+		}
+	} else {
+		$this->_is_end_fill = true;
+	}*/
+}
+/**
+ * @param {Object} {color, thikness} param
+*/
+Graphics.prototype._applyLineStyle = function(param) {
+	var color, thikness;
+	if (this._new_color && this._new_color != this._color) {
+		color = this._color = this._new_color;
+		this._new_color = null;
+	} else {
+		color = this._color;
+	}
+	
+	if (this._new_thikness && this._new_thikness != this._thikness) {
+		thikness = this._thikness = this._new_thikness;
+		this._new_thikness = null;
+	} else {
+		thikness = this._thikness;
+	}
+	param = {color: color, thikness: thikness};
+}
+Graphics.prototype._createPoint = function(type, x, y, color, thikness, is_start, is_begin_fill, is_end_fill) {
+	if (!is_begin_fill) {
+		is_begin_fill = this._is_begin_fill;
+		this._is_begin_fill = false;
+	}
+	if (is_end_fill) {
+		is_end_fill = this._is_end_fill;
+		this._is_end_fill = false;
+	}
+	var fill_color = false;
+	if (this._last_object && this._last_object.fill_color != this._fill_color) {
+		fill_color = this._fill_color;
+	}
+	o = {
+		type: type,
+		x : x,
+		y : y,
+		color : color,
+		fill_color : fill_color,
+		thikness : thikness,
+		is_start : is_start,
+		is_begin_fill : is_begin_fill,
+		is_end_fill : is_end_fill
+	};
+	return o;
+}
 //===================DisplayObjects=====================================
 /**
  * @param {Image} img
@@ -97,6 +273,9 @@ function Sprite(img, id, depth) {
 	this.id = id;
 	this.depth = depth;
 	this.name;
+	this.graphics = new Graphics();
+	this.childs = [];
+	this.childsMap = {};
 	this.go(0, 0);
 }
 /**
@@ -166,7 +345,7 @@ Sprite.prototype.clone = function (x, y, id, visible) {
 	if (id) {
 		s.id = id;
 	}
-	
+	s.orign = o;
 	return s;
 }
 /**
@@ -221,6 +400,15 @@ Sprite.prototype.go = function (x, y) {
 		}
 		o.dc = o.nearSprites.length;
 }
+/**
+ * @description установить координаты клипа на холсте и его положение в сетке
+*/
+Sprite.prototype.addChild = function (sprite) {
+	var id = sprite.id, s;
+	id = id ? id : 's' + this.childs.length;
+	s = Sprite(null, id, this.childs.length);
+	this.childsMap[id] = this.childs.length - 1;
+}
 //=================Engine 2D============================================
 SimpleEngine2D.prototype.onEnterFrame = function () {}
 SimpleEngine2D.prototype.onLoadImages = function () {}
@@ -257,6 +445,7 @@ SimpleEngine2D.prototype.tick = function () {
 	for (i = 0; i < sz; i +=1) {
 		spr = SE2D.sprites[i];
 		if (spr.visible != false) {
+			//TODO draw graphics
 			SE2D.c.drawImage(spr.img, spr.x, spr.y);
 		}
 	}
