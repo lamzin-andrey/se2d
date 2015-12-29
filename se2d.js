@@ -134,6 +134,7 @@ Graphics.prototype.lineTo = function (x, y) {
 	item = this._createPoint(t, x, y, params.clr, params.thi);
 	this._last_object = item;
 	this._objects.push(item);
+	this._parent.visible = true;
 }
 Graphics.prototype.moveTo = function (x, y) {
 	var t = this.TYPE_POINT, params = {}, point, o;
@@ -171,16 +172,19 @@ Graphics.prototype.drawRect = function (x, y, width, height) {
 	if (this._parent._height < y + height) {
 		this._parent.setHeight(y + height);
 	}
+	this._parent.visible = true;
 }
 
 Graphics.prototype.beginFill = function (color) {
 	this._fill_color = color;
 	this._is_begin_fill = true;
 	this._is_end_fill = false;
+	this._parent.visible = true;
 }
 Graphics.prototype.setLineStyle = function(thikness, color) {
 	this._new_color = color;
 	this._new_thikness = thikness;
+	this._parent.visible = true;
 }
 /***
  * @param float $thikness
@@ -473,11 +477,11 @@ SimpleEngine2D.prototype.tick = function () {
 	for (i = 0; i < sz; i +=1) {
 		spr = SE2D.sprites[i];
 		if (spr.visible != false) {
-			if (spr.graphics._objects.length) {
-				SE2D.drawGraphics(spr.graphics, spr.x, spr.y);
-			}
 			if (spr.img) {
 				SE2D.c.drawImage(spr.img, spr.x, spr.y);
+			}
+			if (spr.graphics._objects.length) {
+				SE2D.drawGraphics(spr.graphics, spr.x, spr.y);
 			}
 		}
 	}
