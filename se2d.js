@@ -80,11 +80,11 @@ var U = {
 }
 //===================Graphics=====================================
 /**
- *
+ * @class Graphics
 */
 function Graphics(parent) {
-	var TYPE_POINT = 1,
-		TYPE_RECT  = 2;
+	this.TYPE_POINT = 1,
+	this.TYPE_RECT  = 2;
 	/** @property Array _objects Содержит объекты (ассоциативные массивы) типа точки линий и четырехугольники
      * item[type=TYPE_POINT]: type, x, y, color, fill_color, thikness, is_start, is_begin_fill, is_end_fill
      * *  is_start 1 если был вызван moveTo
@@ -125,11 +125,11 @@ Graphics.prototype.lineTo = function (x, y) {
 	if (params.thi == o.thikness) {
 		params.thi = null;
 	}
-	if (this._parent.width < x) {
-		this.parent.width = x;
+	if (this._parent._width < x) {
+		this._parent.setWidth(x);
 	}
-	if (this._parent.height < y) {
-		this._parent.height = y;
+	if (this._parent._height < y) {
+		this._parent.setHeight(y);
 	}
 	item = this._createPoint(t, x, y, params.clr, params.thi);
 	this._last_object = item;
@@ -139,6 +139,7 @@ Graphics.prototype.moveTo = function (x, y) {
 	var t = this.TYPE_POINT, params = {}, point, o;
 	this._applyLineStyle(params);
 	point = this._createPoint(t, x, y, params.clr, params.thi, true);
+	//console.log(params);
 	o = this._last_object;
 	//пока забил на оптимизацию
 	/*if ($o && isset($o['is_start'])) { //rewrite
@@ -164,11 +165,11 @@ Graphics.prototype.drawRect = function (x, y, width, height) {
 	this._objects.push(o);
 	this._last_object = o;
 	
-	if (this._parent.width < x + width) {
-		this._parent.width = x + width;
+	if (this._parent._width < x + width) {
+		this._parent.setWidth(x + width);
 	}
-	if (this._parent.height < y + height) {
-		this._parent.height = y + height;
+	if (this._parent._height < y + height) {
+		this._parent.setHeight(y + height);
 	}
 }
 
@@ -226,7 +227,8 @@ Graphics.prototype._applyLineStyle = function(param) {
 	} else {
 		thikness = this._thikness;
 	}
-	param = {color: color, thikness: thikness};
+	param.clr = color;
+	param.thi = thikness;
 }
 Graphics.prototype._createPoint = function(type, x, y, color, thikness, is_start, is_begin_fill, is_end_fill) {
 	if (!is_begin_fill) {
@@ -267,13 +269,13 @@ function Sprite(img, id, depth) {
 	this.is_image  = 0; //1 когда спрайт не надо учитывать при обработке столкновений
 	this.visible = 0;
 	this.img = img;
-	this.w = this._width = img.width;
-	this.h = this._height = img.height;
-	this.se2d = img.se2d;
+	this.w = this._width  = img && img.width ? img.width : 0;
+	this.h = this._height = img && img.height ? img.height : 0;
+	this.se2d = SE2D;
 	this.id = id;
 	this.depth = depth;
 	this.name;
-	this.graphics = new Graphics();
+	this.graphics = new Graphics(this);
 	this.childs = [];
 	this.childsMap = {};
 	this.go(0, 0);
@@ -401,13 +403,29 @@ Sprite.prototype.go = function (x, y) {
 		o.dc = o.nearSprites.length;
 }
 /**
- * @description установить координаты клипа на холсте и его положение в сетке
+ * @description Добавить клип
 */
 Sprite.prototype.addChild = function (sprite) {
-	var id = sprite.id, s;
-	id = id ? id : 's' + this.childs.length;
-	s = Sprite(null, id, this.childs.length);
-	this.childsMap[id] = this.childs.length - 1;
+	var s, o = this, c = o.childs, L = c.length;
+	if (!sprite.id) {
+		sprite.id = 's' + L;
+	}
+	sprite.depth = L;
+	sprite.parentClip = o;
+	c.push(sprite);
+	this.childsMap[id] = c.length - 1;
+}
+/**
+ * @description установить ширину клипа
+*/
+Sprite.prototype.setWidth = function(w) {
+	this.w = this.width = w;
+}
+/**
+ * @description установить высоту клипа
+*/
+Sprite.prototype.setHeight = function(h) {
+	this.h = this.height = h;
 }
 //=================Engine 2D============================================
 SimpleEngine2D.prototype.onEnterFrame = function () {}
@@ -429,7 +447,17 @@ function SimpleEngine2D (canvasId, fps) {
 		this.fps = fps;
 		this.rastrData = [];
 		this.sprites = [];
-		this._root = {};
+		this._root = {
+			addChild: function(sprite) {
+				var o = sprite, id = o.id;
+				if (!id) {
+					o.id = id = 's' + SE2D.sprites.length;
+				}
+				o.parentClip = SE2D._root;
+				SE2D.sprites.push(o);
+				SE2D._root[id] = o;
+			}
+		};
 		this.grid = {};
 		this.__images_length = -1;
 		//для оптимизации расчета столкновений
@@ -445,8 +473,12 @@ SimpleEngine2D.prototype.tick = function () {
 	for (i = 0; i < sz; i +=1) {
 		spr = SE2D.sprites[i];
 		if (spr.visible != false) {
-			//TODO draw graphics
-			SE2D.c.drawImage(spr.img, spr.x, spr.y);
+			if (spr.graphics._objects.length) {
+				SE2D.drawGraphics(spr.graphics, spr.x, spr.y);
+			}
+			if (spr.img) {
+				SE2D.c.drawImage(spr.img, spr.x, spr.y);
+			}
 		}
 	}
 	SE2D.onEnterFrame();
@@ -591,6 +623,83 @@ SimpleEngine2D.prototype.remove = function (id) {
 			delete SE2D._root[i];
 		}
 	}
+}
+/**
+ * @description Отприсовка объекта Graphics клипов
+ * @param {Graphics} graphics
+ * @param {Number} dx
+ * @param {Number} dy
+*/
+SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
+	var j, G = graphics._objects, L = G.length, c = SE2D.c, p, 
+		lastStart, color;
+	for (j = 0; j < L; j++) {
+		p = G[j];
+		if (p.type) {
+			if (p.type == graphics.TYPE_POINT) {
+				if (p.is_start) {
+					lastStart = p;
+				}
+				if (p.thikness) {
+					//$this->_pdf->SetLineWidth($i['thikness'] / 10); //TODO attention
+					c.lineWidth = p.thikness;
+				}
+				if (p.color) {
+					//console.log(' pre set color ' + p.color);
+					color = this.parseColor(p.color);
+					//console.log(' set color ' + color);
+					c.strokeStyle = color; //'#ff0000'
+					//console.log(' set color ' + c.strokeStyle);
+					//$this->_pdf->SetDrawColor($c->r, $c->g, $c->b); //TODO attention
+				}
+				if (p.is_begin_fill && p.fill_color) {
+					color = '#' + p.fill_color.toString(16);
+					c.fillStyle = color; //'#ff0000'
+					//$this->_pdf->SetFillColor($c->r, $c->g, $c->b); //TODO attention
+				}
+				if (p.is_end_fill) {
+					//$this->_pdf->SetFillColor(255, 255, 255);
+					c.closePath();
+					c.fillStyle = '#FFFFFF';
+				}
+				if (p.is_start) {
+					c.beginPath();
+					c.moveTo(lastStart.x + dx, lastStart.y + dy);
+					lastStart = p;
+				} else if (lastStart.x) {
+					//$this->_pdf->Line($lastStart['x'] + $dX, $lastStart['y'] + $dY, $i['x'] + $dX, $i['y'] + $dY);
+					c.lineTo(p.x + dx, p.y + dy);
+					c.stroke();
+					//c.path();
+				} else {
+					Error('On index k = ' + k +  ' lastObject not containt x ');
+				}
+			} else if (p.type == graphics.TYPE_RECT){
+				if (p.fill_color) {
+					color = '#' + p.fill_color.toString(16);
+					//$this->_pdf->SetFillColor($c->r, $c->g, $c->b);
+					c.fillStyle = color;
+				} else {
+					//$this->_pdf->SetFillColor(0);
+					c.fillStyle = '#FFFFFF';
+				}
+				//$this->_pdf->Rect($i['x'] + $dX, $i['y'] + $dY, $i['w'], $i['h'], $style);
+				c.fillRect(p.x + dx, p.y + dy, p.w, p.h);
+			}
+		} else {
+			Error('Unexpected object!');
+		}
+		
+		//end insert
+	}
+}
+SimpleEngine2D.prototype.parseColor = function(c) {
+	c = Number(c).toString(16);
+	while (c.length < 6) {
+		c = '0' + c;
+	}
+	c = '#' + c;
+	return c;
 }
 
 function E(i) {return document.getElementById(i)}
