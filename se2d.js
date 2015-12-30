@@ -260,6 +260,9 @@ Graphics.prototype._createPoint = function(type, x, y, color, thikness, is_start
 	};
 	return o;
 }
+Graphics.prototype.clear = function() {
+	this._objects = [];
+}
 //===================DisplayObjects=====================================
 /**
  * @param {Image} img
@@ -468,7 +471,7 @@ function SimpleEngine2D (canvasId, fps) {
 		this.gridCell; //Если определено, лучше использовать Sprite.go(x,y) для установки координат спрайта
 		setInterval(this.tick, 1000 / fps);
 	} else {
-		alert("Object canvas with id '" + canvasId + "' not found");
+		//alert("Object canvas with id '" + canvasId + "' not found");
 	}
 }
 SimpleEngine2D.prototype.tick = function () {
@@ -676,7 +679,7 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 					c.stroke();
 					//c.path();
 				} else {
-					Error('On index k = ' + k +  ' lastObject not containt x ');
+					Error('On index k = ' + j +  ' lastObject not containt x ');
 				}
 			} else if (p.type == graphics.TYPE_RECT){
 				if (p.fill_color) {
