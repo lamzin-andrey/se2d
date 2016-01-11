@@ -126,10 +126,10 @@ Graphics.prototype.lineTo = function (x, y) {
 		params.thi = null;
 	}
 	if (this._parent._width < x) {
-		this._parent.setWidth(x);
+		this._parent.setWidth(x, 1);
 	}
 	if (this._parent._height < y) {
-		this._parent.setHeight(y);
+		this._parent.setHeight(y, 1);
 	}
 	item = this._createPoint(t, x, y, params.clr, params.thi);
 	this._last_object = item;
@@ -167,10 +167,10 @@ Graphics.prototype.drawRect = function (x, y, width, height) {
 	this._last_object = o;
 	
 	if (this._parent._width < x + width) {
-		this._parent.setWidth(x + width);
+		this._parent.setWidth(x + width, 1);
 	}
 	if (this._parent._height < y + height) {
-		this._parent.setHeight(y + height);
+		this._parent.setHeight(y + height, 1);
 	}
 	this._parent.visible = true;
 }
@@ -276,9 +276,34 @@ function Sprite(img, id, depth) {
 	this.is_image  = 0; //1 когда спрайт не надо учитывать при обработке столкновений
 	this.visible = 0;
 	this.img = img;
-	this.w = this._width  = img && img.width ? img.width : 0;
-	this.h = this._height = img && img.height ? img.height : 0;
-	this.se2d = SE2D;
+	this.sourceW = this.w = this._width  = img && img.width ? img.width : 0;
+	this.sourceH = this.h = this._height = img && img.height ? img.height : 0;
+	this._scaleX = this._scaleY = 1;
+	
+	/** @property {Number} Sprite.scaleX */
+	Object.defineProperty(this, 'scaleX', {
+		enumerable:true,
+		get:function(){
+			return this._scaleX;
+		},
+		set:function(v){
+			this._scaleX = v;
+			this.setWidth(this.sourceW * v);
+		}
+	});
+	/** @property {Number} Sprite.scaleY */
+	Object.defineProperty(this, 'scaleY', {
+		enumerable:true,
+		get:function(){
+			return this._scaleY;
+		},
+		set:function(v){
+			this._scaleY = v;
+			this.setHeight(this.sourceH * v);
+		}
+	});
+	
+	this.se2d = window.SE2D;
 	this.id = id;
 	this.depth = depth;
 	this.name;
@@ -361,7 +386,7 @@ Sprite.prototype.clone = function (x, y, id, visible) {
  * @description установить координаты клипа на холсте и его положение в сетке
 */
 Sprite.prototype.go = function (x, y) {
-	var se = SE2D, o = this, i, L = U.sz(o.cells), id = o.id, cellId;
+	var se = window.SE2D, o = this, i, L = U.sz(o.cells), id = o.id, cellId;
 	o.x = x;
 	o.y = y;
 	if (0 == o.visible || 1 == o.is_image || !se.gridCell || !se.grid) {
@@ -425,29 +450,33 @@ Sprite.prototype.addChild = function (sprite) {
 /**
  * @description установить ширину клипа
 */
-Sprite.prototype.setWidth = function(w) {
-	this.w = this.width = w;
+Sprite.prototype.setWidth = function(w, resetSource) {
+	this.w = this._width = w;
+	if (resetSource) {
+		this.sourceW = w;
+	}
 }
 /**
  * @description установить высоту клипа
 */
-Sprite.prototype.setHeight = function(h) {
-	this.h = this.height = h;
+Sprite.prototype.setHeight = function(h, resetSource) {
+	this.h = this._height = h;
+	if (resetSource) {
+		this.sourceH = h;
+	}
 }
 //=================Engine 2D============================================
-SimpleEngine2D.prototype.onEnterFrame = function () {}
-SimpleEngine2D.prototype.onLoadImages = function () {}
-SimpleEngine2D.prototype.onLoadRastrResource = function () {}
 function SimpleEngine2D (canvasId, fps) {
 	var o = document.getElementById(canvasId);
 	if (o && o.getContext) {
 		if (!window.SE2D) {
-			SE2D = this;
+			window.SE2D = this;
 		}
 		this.test = '000';
 		this.c = o.getContext("2d");
 		this.canvas = o;
 		this.canvas.onclick = this.onclick;
+		this.canvas.onmousemove = this.onMouseMove;
 		//this.canvas.ontouch = this.ontouch; //TODO
 		this.w = o.width;
 		this.h = o.height;
@@ -474,6 +503,9 @@ function SimpleEngine2D (canvasId, fps) {
 		//alert("Object canvas with id '" + canvasId + "' not found");
 	}
 }
+SimpleEngine2D.prototype.onEnterFrame = function () {}
+SimpleEngine2D.prototype.onLoadImages = function () {}
+SimpleEngine2D.prototype.onLoadRastrResource = function () {}
 SimpleEngine2D.prototype.tick = function () {
 	var sz = SE2D.sprites.length, i, spr;
 	SE2D.c.clearRect(0, 0, SE2D.w, SE2D.h);
@@ -484,6 +516,7 @@ SimpleEngine2D.prototype.tick = function () {
 				SE2D.c.drawImage(spr.img, spr.x, spr.y);
 			}
 			if (spr.graphics._objects.length) {
+				//TODO когда дойдешь до рекурсии, до отрисовки графики потомков, не забудь умножать для них spr.x, spr.y нв scaleX родителя
 				SE2D.drawGraphics(spr.graphics, spr.x, spr.y);
 			}
 		}
@@ -608,6 +641,13 @@ SimpleEngine2D.prototype.onclick = function (e) {
 	}
 }
 /**
+ * @description Мониторит координаты курсора мыши
+*/
+SimpleEngine2D.prototype.onMouseMove = function (e) {
+	SE2D.mouseX = e.x || e.layerX  || (e.clientX - SE2D.canvas.offsetLeft);
+	SE2D.mouseY = e.y || e.layerY  || (e.clientY - SE2D.canvas.offsetTop);
+}
+/**
  * @description Удалить клип
  * @param {String}|{Sprite} id
 */
@@ -639,7 +679,7 @@ SimpleEngine2D.prototype.remove = function (id) {
 */
 SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 	var j, G = graphics._objects, L = G.length, c = SE2D.c, p, 
-		lastStart, color;
+		lastStart, color, scaleX = graphics._parent.scaleX, scaleY = graphics._parent.scaleY;
 	for (j = 0; j < L; j++) {
 		p = G[j];
 		if (p.type) {
@@ -652,15 +692,11 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 					c.lineWidth = p.thikness;
 				}
 				if (p.color) {
-					//console.log(' pre set color ' + p.color);
 					color = this.parseColor(p.color);
-					//console.log(' set color ' + color);
-					c.strokeStyle = color; //'#ff0000'
-					//console.log(' set color ' + c.strokeStyle);
-					//$this->_pdf->SetDrawColor($c->r, $c->g, $c->b); //TODO attention
+					c.strokeStyle = color;
 				}
 				if (p.is_begin_fill && p.fill_color) {
-					color = '#' + p.fill_color.toString(16);
+					color = this.parseColor(p.fill_color);
 					c.fillStyle = color; //'#ff0000'
 					//$this->_pdf->SetFillColor($c->r, $c->g, $c->b); //TODO attention
 				}
@@ -671,13 +707,11 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 				}
 				if (p.is_start) {
 					c.beginPath();
-					c.moveTo(lastStart.x + dx, lastStart.y + dy);
+					c.moveTo(lastStart.x * scaleX + dx, lastStart.y * scaleY + dy);
 					lastStart = p;
 				} else if (lastStart.x) {
-					//$this->_pdf->Line($lastStart['x'] + $dX, $lastStart['y'] + $dY, $i['x'] + $dX, $i['y'] + $dY);
-					c.lineTo(p.x + dx, p.y + dy);
+					c.lineTo( p.x * scaleX  + dx, p.y * scaleY + dy);
 					c.stroke();
-					//c.path();
 				} else {
 					Error('On index k = ' + j +  ' lastObject not containt x ');
 				}
@@ -691,7 +725,7 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 					c.fillStyle = '#FFFFFF';
 				}
 				//$this->_pdf->Rect($i['x'] + $dX, $i['y'] + $dY, $i['w'], $i['h'], $style);
-				c.fillRect(p.x + dx, p.y + dy, p.w, p.h);
+				c.fillRect( p.x * scaleX + dx, p.y * scaleY + dy, p.w * scaleX, p.h * scaleY);
 			}
 		} else {
 			Error('Unexpected object!');
@@ -701,6 +735,9 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 	}
 }
 SimpleEngine2D.prototype.parseColor = function(c) {
+	if (c == 0) {
+		return '#000001';
+	}
 	c = Number(c).toString(16);
 	while (c.length < 6) {
 		c = '0' + c;
