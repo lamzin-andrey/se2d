@@ -438,6 +438,7 @@ Sprite.prototype.go = function (x, y) {
 /**
  * @description Добавить клип
 */
+//TODO remove clip from previous parent (doublicate!)
 Sprite.prototype.addChild = function (sprite) {
 	var s, o = this, c = o.childs, L = c.length;
 	if (!sprite.id) {
@@ -493,6 +494,7 @@ function SimpleEngine2D (canvasId, fps) {
 		this.fps = fps;
 		this.rastrData = [];
 		this.sprites = [];
+		//TODO remove clip from previous parent (doublicate!)
 		this._root = {
 			addChild: function(sprite) {
 				var o = sprite, id = o.id;
