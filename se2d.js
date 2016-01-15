@@ -271,6 +271,16 @@ Graphics.prototype.clear = function() {
  * @param {Number} depth
  * */
 function Sprite(img, id, depth) {
+	if (img || id) {
+		this.initSprite(img, id, depth);
+	}
+}
+/**
+ * @description
+ * @param
+ * @return
+*/
+Sprite.prototype.initSprite = function (img, id, depth) {
 	this.cells = []; //номера строк и столбцов сетки [row,col], если SE2D.gridCell is int
 	this.nearSprites = []; //идентификаторы спрайтов, находящихся в той же ячейке, если SE2D.gridCell is int
 	this.dc; //danger collision - not 0 if in cell exists any sprites
@@ -520,6 +530,72 @@ Sprite.prototype.setMouseXY = function() {
 		this.mouseY = SE2D.mouseY - this.y;
 	}
 }
+//=================TextFormat============================================
+/**
+ * @param {String} font
+ * @param {Number} size
+ * @param {Number} color
+*/
+function TextFormat(font, size, color) {
+	this.font = font ? font : 'Times';
+	this.size = size ? size : 12;
+	this.color = color ? color : 0x000000;
+}
+//=================TextField============================================
+function TextField(id) {
+	this.initSprite(null, id, 0);
+	this.textFormat = new TextFormat();
+	
+	/** @property {Number} TextField.textWidth */
+	Object.defineProperty(this, 'textWidth', {
+		enumerable:true,
+		get:function(){
+			return (+this._textWidth ? +this._textWidth : 0);
+		}
+	});
+	/** @property {Number} TextField.text */
+	Object.defineProperty(this, 'text', {
+		enumerable:true,
+		get:function(){
+			return this._text;
+		},
+		set:function(v){
+			this._text = v;
+			this._textWidth = this._getTextWidth(v);
+		}
+	});
+}
+U.extend(Sprite, TextField);
+/**
+ * @param TextFormat tf
+*/
+TextField.prototype.setTextFormat = function(tf) {
+	this.textFormat = tf;
+}
+TextField.prototype.getTextFormat = function() {
+	return this.textFormat;
+}
+TextField.prototype._getTextWidth = function(s) {
+	var c = SE2D.c;
+	c.font = this.textFormat.size + "px " + this.textFormat.font;
+	return c.measureText(s).width;
+}
+	/**
+	 * TODO for fromArray info
+     * @return array
+    
+    public function TextField::toArray() {
+		$result = parent::toArray();
+		$result['text'] = $this->_text;
+		$result['textWidth'] = $this->_textWidth;
+		$result['textFormat'] = array(
+			'font' => $this->_textFormat->font,
+			'size' => $this->_textFormat->size,
+			'color' => $this->_textFormat->color,
+		);
+		return $result;
+    }*/
+    
 //=================Engine 2D============================================
 function SimpleEngine2D (canvasId, fps) {
 	var o = document.getElementById(canvasId);
@@ -590,23 +666,6 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	offsetX = offsetX ? offsetX : 0;
 	offsetY = offsetY ? offsetY : 0;
 	
-	lvl = +lvl ? +lvl : 0;
-	/*//TODO TextField
-	if (s instanceof TextField) {
-		var tfm = s.getTextFormat();
-		var color = SE2D.parseColor(tfm.color);
-		//TODO replace it to canvas 2d methods
-		
-		//$this->_pdf->SetTextColor($color->r, $color->g, $color->b);
-		//$this->_pdf->SetFont($tfm->font);
-		//$this->_pdf->SetFontSize($tfm->size);
-		//$this->_pdf->Text($displayObject->x + $offsetX, $displayObject->y + $offsetY + $tfm->size / 4, $displayObject->text);
-	}*/
-	
-	/*if (isset($displayObject->bitmap)) {
-		//TODO draw bitmap with rotation!!
-		$this->_pdf->Image($displayObject->bitmap, $displayObject->x + $offsetX, $displayObject->y + $offsetY);
-	}*/
 	parentScx = s.scaleX;
 	parentScy = s.scaleY;
 	o = s;
@@ -617,6 +676,23 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 			parentScy *= o.scaleY;
 		}
 	}
+	
+	lvl = +lvl ? +lvl : 0;
+	
+	if (s instanceof TextField) {
+		var tfm = s.getTextFormat(),
+		c = SE2D.c,
+		sFColor = c.fillStyle,
+		sColor = c.strokeStyle;
+		c.strokeStyle = c.fillStyle  = SE2D.parseColor(tfm.color);
+		//TODO size with scaleY
+		c.font = tfm.size + "px " + tfm.font;
+		c.fillText(s.text, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy + tfm.size);
+		c.fillStyle = sFColor;
+		c.strokeStyle = sColor;
+	}
+	
+	
 	if (s.img) {
 		SE2D.c.drawImage(s.img, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, s.img.width * parentScx, s.img.height *  parentScy);
 	}
