@@ -203,6 +203,7 @@ Graphics.prototype.lineStyle = function(thikness, color) {
 Graphics.prototype.endFill = function() {
 	//пока забил на оптимизацию
 	this._is_end_fill = true;
+	this._objects[this._objects.length - 1].is_end_fill = true;
 	/*$o = $this->_objects;
 	if ($this->_objects && is_array($o)) {
 		$c = count($o);
@@ -239,14 +240,14 @@ Graphics.prototype._createPoint = function(type, x, y, color, thikness, is_start
 		is_begin_fill = this._is_begin_fill;
 		this._is_begin_fill = false;
 	}
-	if (is_end_fill) {
+	/*if (!is_end_fill) {
 		is_end_fill = this._is_end_fill;
 		this._is_end_fill = false;
-	}
+	}*/
 	var fill_color = false;
-	if (this._last_object && this._last_object.fill_color != this._fill_color) {
+	//if (this._last_object && this._last_object.fill_color != this._fill_color) {
 		fill_color = this._fill_color;
-	}
+	//}
 	o = {
 		type: type,
 		x : x,
@@ -445,7 +446,7 @@ Sprite.prototype.addChild = function (sprite) {
 	sprite.depth = L;
 	sprite.parentClip = o;
 	c.push(sprite);
-	this.childsMap[id] = c.length - 1;
+	this.childsMap[sprite.id] = c.length - 1;
 }
 /**
  * @description установить ширину клипа
@@ -463,6 +464,15 @@ Sprite.prototype.setHeight = function(h, resetSource) {
 	this.h = this._height = h;
 	if (resetSource) {
 		this.sourceH = h;
+	}
+}
+/**
+ * @description Устанавливает координаты мыши в клипе
+*/
+Sprite.prototype.setMouseXY = function() {
+	if (SE2D.mouseX) {
+		this.mouseX = SE2D.mouseX - this.x;
+		this.mouseY = SE2D.mouseY - this.y;
 	}
 }
 //=================Engine 2D============================================
@@ -512,21 +522,62 @@ SimpleEngine2D.prototype.tick = function () {
 	for (i = 0; i < sz; i +=1) {
 		spr = SE2D.sprites[i];
 		if (spr.visible != false) {
-			if (spr.img) {
-				SE2D.c.drawImage(spr.img, spr.x, spr.y);
-			}
-			if (spr.graphics._objects.length) {
-				//TODO когда дойдешь до рекурсии, до отрисовки графики потомков, не забудь умножать для них spr.x, spr.y нв scaleX родителя
-				SE2D.drawGraphics(spr.graphics, spr.x, spr.y);
-			}
+			SE2D.draw(spr);
+			spr.setMouseXY();
 		}
 	}
 	SE2D.onEnterFrame();
 }
+//TODO когда дойдешь до рекурсии, до отрисовки графики потомков, не забудь умножать для них spr.x, spr.y нв scaleX родителя
+/**
+ * @param {Sprite} s
+ * @param {Number} offsetX
+ * @param {Number} offsetY
+*/
+SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
+	var arr = s.childs, i, L = arr.length;
+	offsetX = offsetX ? offsetX : 0;
+	offsetY = offsetY ? offsetY : 0;
+	
+	lvl = +lvl ? +lvl : 0;
+	/*//TODO TextField
+	if (s instanceof TextField) {
+		var tfm = s.getTextFormat();
+		var color = SE2D.parseColor(tfm.color);
+		//TODO replace it to canvas 2d methods
+		
+		//$this->_pdf->SetTextColor($color->r, $color->g, $color->b);
+		//$this->_pdf->SetFont($tfm->font);
+		//$this->_pdf->SetFontSize($tfm->size);
+		//$this->_pdf->Text($displayObject->x + $offsetX, $displayObject->y + $offsetY + $tfm->size / 4, $displayObject->text);
+	}*/
+	
+	/*if (isset($displayObject->bitmap)) {
+		//TODO draw bitmap with rotation!!
+		$this->_pdf->Image($displayObject->bitmap, $displayObject->x + $offsetX, $displayObject->y + $offsetY);
+	}*/
+	if (s.img) {
+		SE2D.c.drawImage(s.img, (s.x + offsetX) * s.scaleX, (s.y + offsetY) * s.scaleY, s.img.width * s.scaleX, s.img.height * s.scaleY);
+	}
+	
+	//Вообще-то Сначала берем графикс и рисуем его, но тут пока так
+	/*$objects = $displayObject->graphics->_objects;
+	$this->_drawGraphics($objects, $offsetX  + $displayObject->x, $offsetY  + $displayObject->y);*/
+	
+		
+	if (s.graphics._objects.length) {
+		SE2D.drawGraphics(s.graphics, (s.x + offsetX), (s.y + offsetY), (lvl > 0));
+	}
+	
+	for (i = 0; i < L; i++) {
+		SE2D.draw(arr[i], (s.x + offsetX)/* * s.scaleX*/, (s.y + offsetY)/* * s.scaleY*/, lvl + 1);
+	}
+	
+}
 /**
  * @param {String} path to image
  * @param {String} rastrId
- * */
+*/
 SimpleEngine2D.prototype.addRastr = function (src, rastrId) {
 	//console.log(rastrId);
 	
@@ -628,8 +679,9 @@ SimpleEngine2D.prototype.setButtons = function (names) {
  * @param Array names список имен клипов
 */
 SimpleEngine2D.prototype.onclick = function (e) {
-	var x = e.clientX - SE2D.canvas.offsetLeft,
-		y = e.clientY - SE2D.canvas.offsetTop,
+	SE2D.onMouseMove(e);
+	var x = SE2D.mouseX,
+		y = SE2D.mouseY,
 		mc, i;
 	for (i = 0; i < U.sz(SE2D.sprites); i++) {
 		mc = SE2D.sprites[i];
@@ -679,7 +731,9 @@ SimpleEngine2D.prototype.remove = function (id) {
 */
 SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 	var j, G = graphics._objects, L = G.length, c = SE2D.c, p, 
-		lastStart, color, scaleX = graphics._parent.scaleX, scaleY = graphics._parent.scaleY;
+		lastStart, color, scaleX = graphics._parent.scaleX, 
+		scaleY = graphics._parent.scaleY, fillStart = 0;
+		
 	for (j = 0; j < L; j++) {
 		p = G[j];
 		if (p.type) {
@@ -698,33 +752,36 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 				if (p.is_begin_fill && p.fill_color) {
 					color = this.parseColor(p.fill_color);
 					c.fillStyle = color; //'#ff0000'
-					//$this->_pdf->SetFillColor($c->r, $c->g, $c->b); //TODO attention
+					fillStart = 1;
 				}
 				if (p.is_end_fill) {
-					//$this->_pdf->SetFillColor(255, 255, 255);
 					c.closePath();
+					c.stroke();
+					c.fill();
 					c.fillStyle = '#FFFFFF';
+					fillStart = 0;
 				}
 				if (p.is_start) {
 					c.beginPath();
+					
 					c.moveTo(lastStart.x * scaleX + dx, lastStart.y * scaleY + dy);
 					lastStart = p;
-				} else if (lastStart.x) {
+				} else if (lastStart.x || lastStart.x === 0) {
 					c.lineTo( p.x * scaleX  + dx, p.y * scaleY + dy);
-					c.stroke();
+					if (!fillStart) {
+						c.stroke();
+					}
 				} else {
 					Error('On index k = ' + j +  ' lastObject not containt x ');
 				}
 			} else if (p.type == graphics.TYPE_RECT){
 				if (p.fill_color) {
-					color = '#' + p.fill_color.toString(16);
+					color = SE2D.parseColor(p.fill_color);
 					//$this->_pdf->SetFillColor($c->r, $c->g, $c->b);
 					c.fillStyle = color;
 				} else {
-					//$this->_pdf->SetFillColor(0);
 					c.fillStyle = '#FFFFFF';
 				}
-				//$this->_pdf->Rect($i['x'] + $dX, $i['y'] + $dY, $i['w'], $i['h'], $style);
 				c.fillRect( p.x * scaleX + dx, p.y * scaleY + dy, p.w * scaleX, p.h * scaleY);
 			}
 		} else {
