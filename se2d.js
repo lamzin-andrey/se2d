@@ -441,6 +441,7 @@ Sprite.prototype.go = function (x, y) {
 //TODO remove clip from previous parent (doublicate!)
 Sprite.prototype.addChild = function (sprite) {
 	var s, o = this, c = o.childs, L = c.length;
+	sprite.removeFromParentScope();
 	if (!sprite.id) {
 		sprite.id = 's' + L;
 	}
@@ -448,6 +449,49 @@ Sprite.prototype.addChild = function (sprite) {
 	sprite.parentClip = o;
 	c.push(sprite);
 	this.childsMap[sprite.id] = c.length - 1;
+}
+/**
+ * @description Удалить ссылки на клип в родителе
+*/
+Sprite.prototype.removeFromParentScope = function () {
+	var sprite = this, parent = sprite.parentClip, i, L, 
+		aBuf = [], oBuf = {}, array, mapName = 'childsMap';
+	if (!parent) {
+		return false;
+	}
+	if (parent.isRoot) {
+		array = SE2D.sprites;
+	} else {
+		array = parent.childs;
+	}
+	if (sprite.id) {
+		L = array.length;
+		for (i = 0; i < L; i++) {
+			if (array[i].id !== sprite.id) {
+				aBuf.push( array[i] );
+			}
+		}
+		if (parent.isRoot) {
+			SE2D.sprites = aBuf;
+		} else {
+			parent.childs = aBuf;
+		}
+		if (parent instanceof Sprite) {
+			for (i in parent[mapName]) {
+				if (i !== sprite.id) {
+					oBuf[i] = parent[mapName][i];
+				}
+			}
+			parent[mapName] = oBuf;
+		} else if(parent.isRoot) {
+			for (i in parent) {
+				if (i !== sprite.id) {
+					oBuf[i] = parent[i];
+				}
+			}
+			parent = oBuf;
+		}
+	}
 }
 /**
  * @description установить ширину клипа
@@ -498,13 +542,17 @@ function SimpleEngine2D (canvasId, fps) {
 		this._root = {
 			addChild: function(sprite) {
 				var o = sprite, id = o.id;
+				if (o.id == 'isRoot' || o.id == 'addChild') {
+					Error('Invalid name of the clip "' + o.if + '"');
+				}
 				if (!id) {
 					o.id = id = 's' + SE2D.sprites.length;
 				}
 				o.parentClip = SE2D._root;
 				SE2D.sprites.push(o);
 				SE2D._root[id] = o;
-			}
+			},
+			isRoot: true
 		};
 		this.grid = {};
 		this.__images_length = -1;
@@ -537,7 +585,8 @@ SimpleEngine2D.prototype.tick = function () {
  * @param {Number} offsetY
 */
 SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
-	var arr = s.childs, i, L = arr.length;
+	var arr = s.childs, i, L = arr.length,
+		parentScx, parentScy, o;
 	offsetX = offsetX ? offsetX : 0;
 	offsetY = offsetY ? offsetY : 0;
 	
@@ -558,8 +607,18 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 		//TODO draw bitmap with rotation!!
 		$this->_pdf->Image($displayObject->bitmap, $displayObject->x + $offsetX, $displayObject->y + $offsetY);
 	}*/
+	parentScx = s.scaleX;
+	parentScy = s.scaleY;
+	o = s;
+	while (o.parentClip) {
+		o = o.parentClip;
+		if (!o.isRoot) {
+			parentScx *= o.scaleX;
+			parentScy *= o.scaleY;
+		}
+	}
 	if (s.img) {
-		SE2D.c.drawImage(s.img, (s.x + offsetX) * s.scaleX, (s.y + offsetY) * s.scaleY, s.img.width * s.scaleX, s.img.height * s.scaleY);
+		SE2D.c.drawImage(s.img, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, s.img.width * parentScx, s.img.height *  parentScy);
 	}
 	
 	//Вообще-то Сначала берем графикс и рисуем его, но тут пока так
@@ -572,7 +631,7 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	}
 	
 	for (i = 0; i < L; i++) {
-		SE2D.draw(arr[i], (s.x + offsetX)/* * s.scaleX*/, (s.y + offsetY)/* * s.scaleY*/, lvl + 1);
+		SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
 	}
 	
 }
@@ -628,6 +687,7 @@ SimpleEngine2D.prototype.onLoadImage = function () {
 	var img = this, se2d = img.se2d, o = new Sprite(img, img.id, img.depth);
 	se2d._root[img.id] = o;
 	se2d.sprites.push(o);
+	o.parentClip = se2d._root;
 	se2d.__images_count--;
 	SE2D.onLoadRastrResource(img.id);
 	//console.log(se2d.__images_count);
@@ -734,7 +794,21 @@ SimpleEngine2D.prototype.remove = function (id) {
 SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 	var j, G = graphics._objects, L = G.length, c = SE2D.c, p, 
 		lastStart, color, scaleX = graphics._parent.scaleX, 
-		scaleY = graphics._parent.scaleY, fillStart = 0;
+		scaleY = graphics._parent.scaleY, fillStart = 0,
+		parent = graphics._parent, iP;
+		
+	parentScx = scaleX;
+	parentScy = scaleY;
+	iP = parent;
+	while (iP.parentClip) {
+		iP = iP.parentClip;
+		if (!iP.isRoot) {
+			parentScx *= iP.scaleX;
+			parentScy *= iP.scaleY;
+		}
+	}
+	scaleX = parentScx;
+	scaleY = parentScx;
 		
 	for (j = 0; j < L; j++) {
 		p = G[j];
