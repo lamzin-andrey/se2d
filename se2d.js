@@ -271,9 +271,9 @@ Graphics.prototype.clear = function() {
  * @param {Number} depth
  * */
 function Sprite(img, id, depth) {
-	if (img || id) {
+	//if (img || id) {
 		this.initSprite(img, id, depth);
-	}
+	//}
 }
 /**
  * @description
@@ -530,6 +530,52 @@ Sprite.prototype.setMouseXY = function() {
 		this.mouseY = SE2D.mouseY - this.y;
 	}
 }
+/**
+ * @description Восстанавливает содержимое спрайта из дампа
+*/
+Sprite.prototype.fromObject = function(parentSprite, dump) {
+	var s, i;//TODO TextField support
+	if (dump.text) {
+		s = new TextField(dump.name);
+	} else {
+		s = new Sprite(null, dump.name, 0);
+	}
+	//s.graphics = {_objects:dump.graphics};
+	//s.graphics._parent = s;
+	s.graphics = new Graphics(s);
+	s.graphics._objects = dump.graphics;
+	
+	s.setHeight(+dump.h ? +dump.h : 0, 1);
+	s.setWidth(+dump.w ? +dump.w : 0, 1);
+	s.rotation = dump.rotation;
+	s.x = dump.x;
+	s.y = dump.y;
+	s.visible = true;
+	if (dump.text) {
+		s.text = dump.text;
+	}
+	//console.log(s);
+	for (i = 0; i < dump.numChildren; i++) {
+		this.fromObject(s, dump.children[i]);
+	}
+	parentSprite.addChild(s);
+}
+/**
+ * @description Очищает у всех потомков graphics
+*/
+Sprite.prototype.clear = function() {
+	this.graphics.clear();
+	for (var i = 0; i < this.childs.length; i++) {
+		this.childs[i].clear();
+	}
+}
+/**
+ * @description Удаляет всех потомков
+*/
+Sprite.prototype.removeAllChilds = function() {
+	this.childs = [];
+	this.childsMap = {};
+}
 //=================TextFormat============================================
 /**
  * @param {String} font
@@ -703,7 +749,7 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	
 		
 	if (s.graphics._objects.length) {
-		SE2D.drawGraphics(s.graphics, (s.x + offsetX), (s.y + offsetY), (lvl > 0));
+		SE2D.drawGraphics(s.graphics, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, (s.id == 's1'));
 	}
 	
 	for (i = 0; i < L; i++) {
@@ -862,17 +908,18 @@ SimpleEngine2D.prototype.remove = function (id) {
 	}
 }
 /**
- * @description Отприсовка объекта Graphics клипов
+ * @description Отрисовка объекта Graphics клипов
  * @param {Graphics} graphics
  * @param {Number} dx
  * @param {Number} dy
 */
-SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
+SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy, dbg) {
 	var j, G = graphics._objects, L = G.length, c = SE2D.c, p, 
 		lastStart, color, scaleX = graphics._parent.scaleX, 
 		scaleY = graphics._parent.scaleY, fillStart = 0,
 		parent = graphics._parent, iP;
 		
+	
 	parentScx = scaleX;
 	parentScy = scaleY;
 	iP = parent;
@@ -885,7 +932,8 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 	}
 	scaleX = parentScx;
 	scaleY = parentScx;
-		
+
+	
 	for (j = 0; j < L; j++) {
 		p = G[j];
 		if (p.type) {
@@ -897,7 +945,7 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 					//$this->_pdf->SetLineWidth($i['thikness'] / 10); //TODO attention
 					c.lineWidth = p.thikness;
 				}
-				if (p.color) {
+				if (p.color || p.color === 0) {
 					color = this.parseColor(p.color);
 					c.strokeStyle = color;
 				}
@@ -931,10 +979,12 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy) {
 					color = SE2D.parseColor(p.fill_color);
 					//$this->_pdf->SetFillColor($c->r, $c->g, $c->b);
 					c.fillStyle = color;
+					c.fillRect( p.x * scaleX + dx, p.y * scaleY + dy, p.w * scaleX, p.h * scaleY);
 				} else {
-					c.fillStyle = '#FFFFFF';
+					c.strokeStyle = this.parseColor(p.color);
+					c.strokeRect( p.x * scaleX + dx, p.y * scaleY + dy, p.w * scaleX, p.h * scaleY);
 				}
-				c.fillRect( p.x * scaleX + dx, p.y * scaleY + dy, p.w * scaleX, p.h * scaleY);
+				
 			}
 		} else {
 			Error('Unexpected object!');
