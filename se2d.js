@@ -537,6 +537,8 @@ Sprite.prototype.fromObject = function(parentSprite, dump) {
 	var s, i;//TODO TextField support
 	if (dump.text) {
 		s = new TextField(dump.name);
+		s.stroke = dump.stroke;
+		s.textFormat = dump.textFormat;
 	} else {
 		s = new Sprite(null, dump.name, 0);
 	}
@@ -730,10 +732,15 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 		c = SE2D.c,
 		sFColor = c.fillStyle,
 		sColor = c.strokeStyle;
-		c.strokeStyle = c.fillStyle  = SE2D.parseColor(tfm.color);
+		c.fillStyle  = SE2D.parseColor(tfm.color);
+		c.strokeStyle = SE2D.parseColor(tfm.color);
 		//TODO size with scaleY
 		c.font = tfm.size + "px " + tfm.font;
-		c.fillText(s.text, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy + tfm.size);
+		if (!s.stroke) {
+			c.fillText(s.text, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy + tfm.size);
+		} else {
+			c.strokeText(s.text, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy + tfm.size);
+		}
 		c.fillStyle = sFColor;
 		c.strokeStyle = sColor;
 	}
