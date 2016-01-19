@@ -381,8 +381,12 @@ Sprite.prototype.clone = function (x, y, id, visible) {
 		c = (o.clone_id_counter ? o.clone_id_counter + 1 : 0),
 		s = new Sprite(o.img, o.id + '_' + c, SE2D.sprites.length /*+ 1*/);
 	o.clone_id_counter = c + 1;
+	
 	SE2D._root[o.id + '_' + c] = s;
 	SE2D.sprites.push(s);
+	
+	s.parentClip = SE2D._root;
+	
 	if (visible) {
 		s.visible = visible;
 	}
@@ -451,6 +455,7 @@ Sprite.prototype.go = function (x, y) {
 //TODO remove clip from previous parent (doublicate!)
 Sprite.prototype.addChild = function (sprite) {
 	var s, o = this, c = o.childs, L = c.length;
+	//console.log( 'remove sprite #' + sprite.id );
 	sprite.removeFromParentScope();
 	if (!sprite.id) {
 		sprite.id = 's' + L;
@@ -494,6 +499,7 @@ Sprite.prototype.removeFromParentScope = function () {
 			}
 			parent[mapName] = oBuf;
 		} else if(parent.isRoot) {
+			//console.log( 'remove sprite #' + sprite.id );
 			for (i in parent) {
 				if (i !== sprite.id) {
 					oBuf[i] = parent[i];
@@ -577,6 +583,13 @@ Sprite.prototype.clear = function() {
 Sprite.prototype.removeAllChilds = function() {
 	this.childs = [];
 	this.childsMap = {};
+}
+/**
+ * @description Получить по id или имени
+ * @return {Sprite} || null
+*/
+Sprite.prototype.getChildByName = function(name) {
+	return (this.childsMap[name] && this.childs[ this.childsMap[name] ] ? this.childs[ this.childsMap[name] ] : null);
 }
 //=================TextFormat============================================
 /**
@@ -760,7 +773,9 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	}
 	
 	for (i = 0; i < L; i++) {
-		SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
+		if (arr[i].visible) {
+			SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
+		}
 	}
 	
 }
