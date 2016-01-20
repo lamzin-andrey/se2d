@@ -589,7 +589,7 @@ Sprite.prototype.removeAllChilds = function() {
  * @return {Sprite} || null
 */
 Sprite.prototype.getChildByName = function(name) {
-	return (this.childsMap[name] && this.childs[ this.childsMap[name] ] ? this.childs[ this.childsMap[name] ] : null);
+	return ( (this.childsMap[name] || this.childsMap[name] === 0) && this.childs[ this.childsMap[name] ] ? this.childs[ this.childsMap[name] ] : null);
 }
 //=================TextFormat============================================
 /**
@@ -760,7 +760,11 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	
 	
 	if (s.img) {
-		SE2D.c.drawImage(s.img, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, s.img.width * parentScx, s.img.height *  parentScy);
+		if (!s.fixSize) {
+			SE2D.c.drawImage(s.img, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, s.img.width * parentScx, s.img.height *  parentScy);
+		} else {
+			SE2D.c.drawImage(s.img, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy);
+		}
 	}
 	
 	//Вообще-то Сначала берем графикс и рисуем его, но тут пока так
@@ -940,8 +944,6 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy, dbg) {
 		lastStart, color, scaleX = graphics._parent.scaleX, 
 		scaleY = graphics._parent.scaleY, fillStart = 0,
 		parent = graphics._parent, iP;
-		
-	
 	parentScx = scaleX;
 	parentScy = scaleY;
 	iP = parent;
