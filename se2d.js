@@ -1,3 +1,4 @@
+'use strict';
 //=================== tools ============================================
 var U = {
 	/**
@@ -26,7 +27,7 @@ var U = {
 	round:function(x) {
 		return Math.round(x);
 	},
-	int:function(n, radix) {
+	"int":function(n, radix) {
 		if (!radix) {
 			radix = 10;
 		}
@@ -77,7 +78,7 @@ var U = {
 		var one = percents100 / 100;
 		return (percent * one);
 	}
-}
+};
 //===================Graphics=====================================
 /**
  * @class Graphics
@@ -109,7 +110,7 @@ function Graphics(parent) {
 	this._parent = parent;
 }
 Graphics.prototype.lineTo = function (x, y) {
-	var o = this._last_object, params = {}, item;
+	var o = this._last_object, params = {}, item, t;
 	if (!o) {
 		Error('need call moveTo before drawLine');
 	}
@@ -219,7 +220,7 @@ Graphics.prototype.endFill = function() {
 */
 Graphics.prototype._applyLineStyle = function(param) {
 	var color, thikness;
-	if (this._new_color && this._new_color != this._color) {
+	if (this._new_color !== this._color) {
 		color = this._color = this._new_color;
 		this._new_color = null;
 	} else {
@@ -244,7 +245,7 @@ Graphics.prototype._createPoint = function(type, x, y, color, thikness, is_start
 		is_end_fill = this._is_end_fill;
 		this._is_end_fill = false;
 	}*/
-	var fill_color = false;
+	var fill_color = false, o;
 	//if (this._last_object && this._last_object.fill_color != this._fill_color) {
 		fill_color = this._fill_color;
 	//}
@@ -263,6 +264,11 @@ Graphics.prototype._createPoint = function(type, x, y, color, thikness, is_start
 }
 Graphics.prototype.clear = function() {
 	this._objects = [];
+	this._color = 0x000000
+	this._fill_color = 0xFFFFFF;
+	this._thikness = 0.25;
+	this._is_begin_fill = false;
+	this._is_end_fill = false;
 }
 //===================DisplayObjects=====================================
 /**
@@ -271,9 +277,7 @@ Graphics.prototype.clear = function() {
  * @param {Number} depth
  * */
 function Sprite(img, id, depth) {
-	//if (img || id) {
 		this.initSprite(img, id, depth);
-	//}
 }
 /**
  * @description
@@ -680,7 +684,7 @@ function SimpleEngine2D (canvasId, fps) {
 			addChild: function(sprite) {
 				var o = sprite, id = o.id;
 				if (o.id == 'isRoot' || o.id == 'addChild') {
-					Error('Invalid name of the clip "' + o.if + '"');
+					Error('Invalid name of the clip "' + o.id + '"');
 				}
 				if (!id) {
 					o.id = id = 's' + SE2D.sprites.length;
@@ -781,7 +785,6 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 			SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
 		}
 	}
-	
 }
 /**
  * @param {String} path to image
@@ -943,10 +946,10 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy, dbg) {
 	var j, G = graphics._objects, L = G.length, c = SE2D.c, p, 
 		lastStart, color, scaleX = graphics._parent.scaleX, 
 		scaleY = graphics._parent.scaleY, fillStart = 0,
-		parent = graphics._parent, iP;
-	parentScx = scaleX;
-	parentScy = scaleY;
-	iP = parent;
+		parent = graphics._parent, iP = parent;
+	var parentScx = scaleX,
+		parentScy = scaleY;
+	;
 	while (iP.parentClip) {
 		iP = iP.parentClip;
 		if (!iP.isRoot) {
@@ -969,7 +972,7 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy, dbg) {
 					//$this->_pdf->SetLineWidth($i['thikness'] / 10); //TODO attention
 					c.lineWidth = p.thikness;
 				}
-				if (p.color || p.color === 0) {
+				if (p.color || p.color == 0) {
 					color = this.parseColor(p.color);
 					c.strokeStyle = color;
 				}
