@@ -1025,7 +1025,7 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy, dbg) {
 	}
 }
 SimpleEngine2D.prototype.parseColor = function(c) {
-	console.log('call parseColor ' + c);
+	//console.log('call parseColor ' + c);
 	if (c == 0) {
 		return '#000001';
 	}
