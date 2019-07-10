@@ -163,7 +163,8 @@ Graphics.prototype.drawRect = function (x, y, width, height) {
 		color: this._color,
 		thikness: this._thikness,
 		fill_color: this._is_begin_fill && !this._is_end_fill ?  this._fill_color : false
-	};
+	}, params = {};
+	this._applyLineStyle(params);
 	this._objects.push(o);
 	this._last_object = o;
 	
@@ -183,8 +184,10 @@ Graphics.prototype.beginFill = function (color) {
 	this._parent.visible = true;
 }
 Graphics.prototype.setLineStyle = function(thikness, color) {
-	this._new_color = color;
-	this._new_thikness = thikness;
+	/*this._new_color = color;
+	this._new_thikness = thikness;/**/
+	this._color = color;
+	this._thikness = thikness;
 	this._parent.visible = true;
 }
 /***
@@ -775,7 +778,7 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	/*$objects = $displayObject->graphics->_objects;
 	$this->_drawGraphics($objects, $offsetX  + $displayObject->x, $offsetY  + $displayObject->y);*/
 	
-		
+
 	if (s.graphics._objects.length) {
 		SE2D.drawGraphics(s.graphics, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, (s.id == 's1'));
 	}
@@ -1008,6 +1011,7 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy, dbg) {
 					c.fillStyle = color;
 					c.fillRect( p.x * scaleX + dx, p.y * scaleY + dy, p.w * scaleX, p.h * scaleY);
 				} else {
+					//console.log(p);
 					c.strokeStyle = this.parseColor(p.color);
 					c.strokeRect( p.x * scaleX + dx, p.y * scaleY + dy, p.w * scaleX, p.h * scaleY);
 				}
@@ -1021,6 +1025,7 @@ SimpleEngine2D.prototype.drawGraphics = function(graphics, dx, dy, dbg) {
 	}
 }
 SimpleEngine2D.prototype.parseColor = function(c) {
+	console.log('call parseColor ' + c);
 	if (c == 0) {
 		return '#000001';
 	}
