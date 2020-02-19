@@ -896,8 +896,8 @@ SimpleEngine2D.prototype.setButtons = function (names) {
 */
 SimpleEngine2D.prototype.onclick = function (e) {
 	SE2D.onMouseMove(e);
-	var x = SE2D.mouseX,
-		y = SE2D.mouseY,
+	var x = e.clientX - SE2D.canvas.offsetLeft,
+		y = e.clientY - SE2D.canvas.offsetTop,
 		mc, i;
 	for (i = 0; i < U.sz(SE2D.sprites); i++) {
 		mc = SE2D.sprites[i];
