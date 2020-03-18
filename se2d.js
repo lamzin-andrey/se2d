@@ -77,6 +77,29 @@ var U = {
 	getPercents:function(percent, percents100) {
 		var one = percents100 / 100;
 		return (percent * one);
+	},
+	/**
+	 * @description Создать копию объекта или массива
+	 * @param {Array or Object} o
+	 * @return {Array or Object or null}
+	*/
+	clone:function(o) {
+		var i, newO;
+		if (o instanceof Array) {
+			newO = [];
+			for (i = 0; i < o.length; i++) {
+				newO[i] = o[i];
+			}
+			return newO;
+		}
+		if (o instanceof Object) {
+			newO = {};
+			for (i in o) {
+				newO[i] = o[i];
+			}
+			return newO;
+		}
+		return null;
 	}
 };
 //===================Graphics=====================================
@@ -665,6 +688,9 @@ TextField.prototype._getTextWidth = function(s) {
     }*/
     
 //=================Engine 2D============================================
+SimpleEngine2D.prototype.onEnterFrame = function () {}
+SimpleEngine2D.prototype.onLoadImages = function () {}
+SimpleEngine2D.prototype.onLoadRastrResource = function () {}
 function SimpleEngine2D (canvasId, fps) {
 	var o = document.getElementById(canvasId);
 	if (o && o.getContext) {
@@ -920,13 +946,28 @@ SimpleEngine2D.prototype.onMouseMove = function (e) {
  * @param {String}|{Sprite} id
 */
 SimpleEngine2D.prototype.remove = function (id) {
-	var i, copy = [];
+	var i, copy = [], strId = id, j,
+	/** @var {Array of String} aClipIdList идентификаторы клипов, записаных в соответствующую ячейку сетки */
+	aClipIdList, 
+	/** @var {} принимает значения идентификаторов ячееек сетки, в которых записан id клипа */
+	cellId;
 	if (!(id instanceof Sprite)) {
 		id = SE2D._root[id];
 	}
 	if (!(id instanceof Sprite)) {
 		return;
 	}
+	//Уничтожить ссылки на удаляемый клип в this.grid (туда их записывает метод go)
+	for (i = 0; i < id.cells.length; i++) {
+		cellId = id.cells[i][0] + '_' + id.cells[i][1];
+		aClipIdList = this.grid[cellId];
+		if (aClipIdList) {
+			for (j in aClipIdList) {
+				delete this.grid[cellId][j];
+			}
+		}
+	}
+	
 	for (i = 0; i < SE2D.sprites.length; i++) {
 		if (SE2D.sprites[i] != id) {
 			copy.push(SE2D.sprites[i]);
