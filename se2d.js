@@ -100,6 +100,16 @@ var U = {
 			return newO;
 		}
 		return null;
+	},
+	/**
+	 * @description Вставляет в массив a элемент после позиции b
+	 *  Например a = [1, 2, 3], arrayInsert(a, 0, 10); должно привести к [1, 10, 2, 3]
+	 * @param {Array} a
+	 * @param {Number} index
+	 * @param {*} item
+	*/
+	arrayInsert:function(a, index, item){
+		a.splice(index + 1, 0, item);
 	}
 };
 //===================Graphics=====================================
@@ -728,6 +738,11 @@ function SimpleEngine2D (canvasId, fps) {
 		this.__images_length = -1;
 		//для оптимизации расчета столкновений
 		this.gridCell; //Если определено, лучше использовать Sprite.go(x,y) для установки координат спрайта
+		/** @property {levelsInfo} Хранит данные о том, сколько всего level в _root.sprites и номера позиций для каждого  
+		   Например  если пять спрайтов на уровне 0 и 2 на уровне 1 {0: 4, 1:1}*/
+		this.levelsInfo = {};
+		/** @property {Number} DEFAULT_LEVEL хранит уровень по умолчанию, который будет рисваиваться Sprite._level*/
+		this.DEFAULT_LEVEL = 0;
 		setInterval(this.tick, 1000 / fps);
 	} else {
 		//alert("Object canvas with id '" + canvasId + "' not found");

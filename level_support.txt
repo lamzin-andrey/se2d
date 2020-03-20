@@ -1,0 +1,18 @@
+Допустим, в каждом спрайте есть _level
+
+По умолчанию он равен SE2D.DEFAULT_LEVEL если тот не определён, ставим 0
+
+При вызове _root.addChild 
+или Sprite.addChild
+
+вставляется в конец группы с level равным mc._level.
+
+Объект SE2D.levelsInfo (и Sprite.levelsInfo) хранит данные о том, сколько всего level в sprites и номера позиций для каждого
+ level после которых должен быть добавлен очередной.
+
+После инициализации SE2D levelsInfo пуст
+Каждый вызов addChild 
+получает _level
+смотрит, есть ли он в levelsInfo
+Если нет, будет вызван простой push, а в levelsInfo[level] будет записана позиция (sprites|childs).length - 1
+Если есть, будет вызван U.arrayInsert(sprites, levelsInfo[level], mc); а в levelsInfo[level] будет записана levelsInfo[level]++
