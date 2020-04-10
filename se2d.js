@@ -110,6 +110,17 @@ var U = {
 	*/
 	arrayInsert:function(a, index, item){
 		a.splice(index + 1, 0, item);
+	},
+	/**
+	 * @description Вернёт 
+	 * @param {Array} a
+	 * @param {Number} index
+	*/
+	def: function(_var, _defaultValue) {
+		if (String(_var) == 'undefuned') {
+			return _defaultValue;
+		}
+		return _var;
 	}
 };
 //===================Graphics=====================================
@@ -330,6 +341,7 @@ Sprite.prototype.initSprite = function (img, id, depth) {
 	this.sourceW = this.w = this._width  = img && img.width ? img.width : 0;
 	this.sourceH = this.h = this._height = img && img.height ? img.height : 0;
 	this._scaleX = this._scaleY = 1;
+	/** @property {Number} Sprite.level - c depth должно быть различным! Как велик бы ни был depth справта на уровне 0, этот спрайт не может быть выше чем любой спрайт уровня 1 и выше*/
 	
 	/** @property {Number} Sprite.scaleX */
 	Object.defineProperty(this, 'scaleX', {
@@ -502,7 +514,10 @@ Sprite.prototype.addChild = function (sprite) {
 	}
 	sprite.depth = L;
 	sprite.parentClip = o;
-	c.push(sprite);
+	
+	//c.push(sprite);
+	SE2D._pushSprite(this, 'childs', o);
+	
 	this.childsMap[sprite.id] = c.length - 1;
 }
 /**
@@ -729,7 +744,10 @@ function SimpleEngine2D (canvasId, fps) {
 					o.id = id = 's' + SE2D.sprites.length;
 				}
 				o.parentClip = SE2D._root;
-				SE2D.sprites.push(o);
+				
+				//SE2D.sprites.push(o);
+				SE2D._pushSprite(this, 'sprites', o);//TODO
+				
 				SE2D._root[id] = o;
 			},
 			isRoot: true
@@ -752,15 +770,49 @@ SimpleEngine2D.prototype.onEnterFrame = function () {}
 SimpleEngine2D.prototype.onLoadImages = function () {}
 SimpleEngine2D.prototype.onLoadRastrResource = function () {}
 SimpleEngine2D.prototype.tick = function () {
-	var sz = SE2D.sprites.length, i, spr;
+	var sz = SE2D.sprites.length, i, spr, j;
 	SE2D.c.clearRect(0, 0, SE2D.w, SE2D.h);
-	for (i = 0; i < sz; i +=1) {
-		spr = SE2D.sprites[i];
-		if (spr.visible != false) {
-			SE2D.draw(spr);
-			spr.setMouseXY();
+	
+	//start _drawSpritesByLevels
+	if (!SE2D.levelsInfo) {
+		for (i = 0; i < sz; i +=1) {
+			spr = SE2D.sprites[i];
+			if (spr.visible != false) {
+				SE2D.draw(spr);
+				spr.setMouseXY();
+			}
+		}
+	} else {
+		for (i in SE2D.levelsInfo) {
+			i = parseInt(i);
+			if (isNaN(i)) {
+				i = 0;
+			}
+			if (i == 0) {
+				for (j = 0; j <= SE2D.levelsInfo[i]; j++) {
+					spr = SE2D.sprites[j];
+					if (spr.visible != false) {
+						SE2D.draw(spr);
+						spr.setMouseXY();
+					}
+				}
+			} else {
+				for (j = SE2D.levelsInfo[i - 1]; j <= SE2D.levelsInfo[i]; j++) {
+					spr = SE2D.sprites[j];
+					if (spr.visible != false) {
+						SE2D.draw(spr);
+						spr.setMouseXY();
+					}
+				}
+			}
 		}
 	}
+	//end _drawSpritesByLevels
+	
+	//SE2D._drawSpritesByLevels(SE2D, 'sprites');//TODO
+	//for draw  скорее всего 
+	
+	
 	SE2D.onEnterFrame();
 }
 //TODO когда дойдешь до рекурсии, до отрисовки графики потомков, не забудь умножать для них spr.x, spr.y нв scaleX родителя
@@ -823,7 +875,8 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	if (s.graphics._objects.length) {
 		SE2D.drawGraphics(s.graphics, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, (s.id == 's1'));
 	}
-	
+	//TODO тут тоже рендерить с учётом уровней
+	//TODO с graphix и textarea внимательно, там конь не сферический
 	for (i = 0; i < L; i++) {
 		if (arr[i].visible) {
 			SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
@@ -1091,6 +1144,29 @@ SimpleEngine2D.prototype.parseColor = function(c) {
 	}
 	c = '#' + c;
 	return c;
+}
+/**
+ * @description Вставить спрайт в Sprite.childs или SE2D._root.sprites сохранив данные о том, на каком уровне находится спрайт
+ * @param {Sprite|Object SE2D._root} oContext 
+ * @param {String} sArrayFieldName имя поля в oContext с которым ассоциирован массив спрайтов
+ * @param {Sprite} oItem элемент массива, как правило это спрайт
+*/
+SimpleEngine2D.prototype._pushSprite = function(oContext, sArrayFieldName, oItem) {
+	//получает level
+	var level = oItem.level ? oItem.level : 0;
+	//смотрит, есть ли он в levelsInfo
+	if (!oContext.levelsInfo[level]) {
+		//Если нет, будет вызван простой push, а в levelsInfo[level] будет записана позиция 
+		//(sprites|childs).length - 1
+		oContext[sArrayFieldName].push(oItem);
+		oContext.levelsInfo[level] = oContext[sArrayFieldName].length - 1;
+	} else {
+		//Если есть, будет вызван U.arrayInsert(sprites, levelsInfo[level], mc); 
+		U.arrayInsert(oContext[sArrayFieldName], oContext.levelsInfo[level], oItem);
+		//а в levelsInfo[level] будет записана levelsInfo[level]++
+		//TODO инкреметить для всех последующих уровней, с номером > level
+		oContext.levelsInfo[level]++;
+	}
 }
 
 function E(i) {return document.getElementById(i)}
