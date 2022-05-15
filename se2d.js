@@ -731,6 +731,8 @@ function SimpleEngine2D (canvasId, fps) {
 				o.parentClip = SE2D._root;
 				SE2D.sprites.push(o);
 				SE2D._root[id] = o;
+				
+				SE2D.sortByDepth();
 			},
 			isRoot: true
 		};
@@ -771,20 +773,28 @@ SimpleEngine2D.prototype.tick = function () {
 */
 SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	var arr = s.childs, i, L = arr.length,
-		parentScx, parentScy, o;
+		parentScx, parentScy, o,
+		parentScXForPos, parentScYForPos;
 	offsetX = offsetX ? offsetX : 0;
 	offsetY = offsetY ? offsetY : 0;
 	
+	
 	parentScx = s.scaleX;
 	parentScy = s.scaleY;
+	parentScXForPos = 1;
+	parentScYForPos = 1;
 	o = s;
 	while (o.parentClip) {
 		o = o.parentClip;
 		if (!o.isRoot) {
 			parentScx *= o.scaleX;
+			parentScXForPos *= o.scaleX;
 			parentScy *= o.scaleY;
+			parentScYForPos *= o.scaleY;
 		}
 	}
+	
+	
 	
 	lvl = +lvl ? +lvl : 0;
 	
@@ -809,9 +819,9 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	
 	if (s.img) {
 		if (!s.fixSize) {
-			SE2D.c.drawImage(s.img, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, s.img.width * parentScx, s.img.height *  parentScy);
+			SE2D.c.drawImage(s.img, (parseInt(s.x) + parseInt(offsetX)) * parentScXForPos, (parseInt(s.y) + parseInt(offsetY)) * parentScYForPos, s.img.width * parentScx, s.img.height *  parentScy);
 		} else {
-			SE2D.c.drawImage(s.img, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy);
+			SE2D.c.drawImage(s.img, (parseInt(s.x) + parseInt(offsetX)) * parentScXForPos, (s.y + offsetY) * parentScXForPos);
 		}
 	}
 	
@@ -829,6 +839,22 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 			SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
 		}
 	}
+}
+/**
+ * @description Переставляет спрайты в соответсвии со значением параметра depth
+*/
+SimpleEngine2D.prototype.sortByDepth = function () {
+	SE2D.sprites.sort(function(i, j) {
+		if (i.depth < j.depth) {
+			return -1;
+		}
+		if (i.depth > j.depth) {
+			return 1;
+		}
+		if (i.depth == j.depth) {
+			return 0;
+		}
+	});
 }
 /**
  * @param {String} path to image
