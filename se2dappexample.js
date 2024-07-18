@@ -1,39 +1,61 @@
 /**
- * @class iParserTool
- * @var {Number} areaW - ширина "стакана"
- * @var {Array}  workGrid - массив i, j, представляющий собой сетку тетриса i - строки, j - столюбцы
- * @var {Object x, y}  workGridCellSz - размеры ячейки workGrid
- * @var {Number}  workGridNumRow      - количество строк в сетке
- * @var {Number}  workGridNumCell     - количество столбцов в сетке
- * @var {iParserToolFigure}  figure        - активная на данный момент фигура
+ * @class TestSm [artfon]
 */
-function iParserTool() {
-	var o = this;
-	SE2D.app = SE2D.canvas.app = this;// SE2D.setApp(this);
-	SE2D.gridCell = 10; //для оптимизации расчета столкновений, 8 взято как сторона "кирпича"
-	SE2D.onLoadImages = this.onInit;
-	SE2D.addGraphResources(["example.png", "subject"
+function TestSm() {
+	window.w = window;
+	w.SE2D.app = w.SE2D.canvas.app = this;// SE2D.setApp(this);
+	w.SE2D.gridCell = 8; //для оптимизации расчета столкновений, 8 взято как сторона "кирпича"
+	w.SE2D.onLoadImages = this.onInit;
+	w.SE2D.addGraphResources(["4.jpg", "t"
 	]);
-	SE2D.onEnterFrame = function(){
-		o.onEnterFrame();
-	};
-}
-/**
- * @description this is SE2D
-*/
-iParserTool.prototype.onInit = function() {
-	var mc = this.app.subject = SE2D._root.subject;
-	mc.x = 0;
-	mc.y = 0;
-	mc.visible = 1;
-	return;
-	if (window.runUnittest && runUnittest instanceof Function) {
-		runUnittest();
-	}
-}
-/**
- * @description this is SE2D
-*/
-iParserTool.prototype.onEnterFrame = function(e) {
 	
+	//SE2D.canvas.onmousemove = this.onMouseMove;
+	w.SE2D.onEnterFrame = this.onEnterFrame;
+}
+/**
+ * @description this is SE2D
+*/
+TestSm.prototype.onInit = function() {
+		var o = this;
+		this.app.t = w.SE2D._root.t;
+		this.app.t.visible = 1;
+		this.app.t.scaleX = 1;
+		this.app.t.scaleY = 1;
+		this.app.t.go(150, 100);
+
+		this.app.dr = 3; 
+		this.app.dx = 1;
+		this.app.a = ["se2d", "micron", "php.js", "filemanager"];
+		this.app.it = 0;
+		
+		
+		setInterval(function(){
+		  o.app.dr += o.app.dx;
+		  if (o.app.dr > 16 || o.app.dr < 3) {
+			  o.app.dx *= -1;
+			  
+			  o.app.it++;
+			  if (o.app.it >= o.app.a.length) {
+				  o.app.it = 0;
+			  }
+		  }
+		}, 100);
+		
+	       
+		try{		
+  //e("bQuit").value = "Start";
+  
+		} catch( err ){
+		  se( err );
+		}
+	
+		return;
+}
+/**
+ * @description this is SE2D
+*/
+TestSm.prototype.onEnterFrame = function(e) {
+  var app = this.app;
+  app.t.rotation += app.dr;
+  console.log(app.dr);
 }

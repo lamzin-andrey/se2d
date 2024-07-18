@@ -10,30 +10,21 @@
 	<script type="text/javascript">
 		window.onload = function() {
 			new SimpleEngine2D("mycan", 44);
-			//new iParserTool();
+			new TestSm();
 		}
 	</script>
 	<script src="se2d.js"></script>
-	<script src="om.js"></script>
-	<!--script src="js/iparseertool.js"></script>
-	<script src="js/unittest.js"></script-->
+	<script src="dom.js"></script>
+	<script src="se2dappexample.js"></script>
 	
 </head>
 
-<body>
+<body style="background-color:#000031">
 	<!--img width="319" src="./example.png" id="imPhone" style="border:red solid 1px"-->
-	<canvas  id="mycan" width="317" height="50"></canvas>
-	
-	<div style="border:black 1px solid">
-		<p>
-			Red Sq X
-			<input type="number" id="iRedSqX" value="5">
-		</p>
-		<p>
-			Red Sq w
-			<input type="number" id="iRedSqW" value="50">
-		</p>
+	<div>
+		<canvas  id="mycan" width="600" height="550" style="margin:auto;border:red solid 0px;display:block"></canvas>
 	</div>
+	
 	
 	<div id="panel"></div>
 </body>

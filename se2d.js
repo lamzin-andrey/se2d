@@ -68,6 +68,9 @@ var U = {
 	time:function() {
 		return parseInt(new Date().getTime()/1000);
 	},
+	utime:function(){
+	  return new Date().getTime();
+	},
 	/**
 	 * @description Возвращает percent от percents100
 	 * @param {Number} percent
@@ -326,6 +329,7 @@ Sprite.prototype.initSprite = function (img, id, depth) {
 	this.dc; //danger collision - not 0 if in cell exists any sprites
 	this.is_image  = 0; //1 когда спрайт не надо учитывать при обработке столкновений
 	this.visible = 0;
+	this.rotation = 0;
 	this.img = img;
 	this.sourceW = this.w = this._width  = img && img.width ? img.width : 0;
 	this.sourceH = this.h = this._height = img && img.height ? img.height : 0;
@@ -774,9 +778,12 @@ SimpleEngine2D.prototype.tick = function () {
 SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 	var arr = s.childs, i, L = arr.length,
 		parentScx, parentScy, o,
-		parentScXForPos, parentScYForPos;
+		parentScXForPos,
+		rt, crt, x, y, w, h, tx, ty,
+		parentScYForPos;
 	offsetX = offsetX ? offsetX : 0;
 	offsetY = offsetY ? offsetY : 0;
+	rt = s.rotation ? s.rotation : 0;
 	
 	
 	parentScx = s.scaleX;
@@ -791,6 +798,8 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 			parentScXForPos *= o.scaleX;
 			parentScy *= o.scaleY;
 			parentScYForPos *= o.scaleY;
+			crt = o.rotation ? o.rotation : 0;
+			rt += crt;
 		}
 	}
 	
@@ -816,13 +825,29 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 		c.strokeStyle = sColor;
 	}
 	
-	
 	if (s.img) {
 		if (!s.fixSize) {
-			SE2D.c.drawImage(s.img, (parseInt(s.x) + parseInt(offsetX)) * parentScXForPos, (parseInt(s.y) + parseInt(offsetY)) * parentScYForPos, s.img.width * parentScx, s.img.height *  parentScy);
+		    x = (parseInt(s.x) + parseInt(offsetX)) * parentScXForPos;
+		    y = (parseInt(s.y) + parseInt(offsetY)) * parentScYForPos;
+		    w = s.img.width * parentScx;
+		    h = s.img.height * parentScy;
+		    tx = x + w/2;
+		    ty = y + h/2;
+		    SE2D.c.translate(tx, ty);
+		    SE2D.c.rotate((rt*Math.PI) / 180);
+		    SE2D.c.translate(-1*tx, -1*ty);
+			SE2D.c.drawImage(s.img, x, y, w, h);
 		} else {
-			SE2D.c.drawImage(s.img, (parseInt(s.x) + parseInt(offsetX)) * parentScXForPos, (s.y + offsetY) * parentScXForPos);
+			x = (parseInt(s.x) + parseInt(offsetX)) * parentScXForPos;
+			y = (parseInt(s.y) + parseInt(offsetY)) * parentScYForPos;
+			tx = x + s.img.width/2;
+		    ty = y + s.img.height/2;
+		    SE2D.c.translate(tx, ty);
+		    SE2D.c.rotate((rt *Math.PI)/180);
+		    SE2D.c.translate(-1*tx, -1*ty);
+			SE2D.c.drawImage(s.img, x, y);
 		}
+		SE2D.c.setTransform(1,0,0,1,0,0);
 	}
 	
 	//Вообще-то Сначала берем графикс и рисуем его, но тут пока так
