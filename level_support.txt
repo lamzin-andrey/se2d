@@ -7,37 +7,31 @@
 
 вставляется в конец группы с level равным mc._level.
 
-Объект SE2D.levelsInfo (и Sprite.levelsInfo) хранит данные о том, 
-сколько всего level в sprites и номера позиций для каждого
+Объект SE2D.levelsInfo (и Sprite.levelsInfo) хранит данные о том, сколько всего level в sprites и номера позиций для каждого
  level после которых должен быть добавлен очередной.
 
 После инициализации SE2D levelsInfo пуст
 Каждый вызов addChild 
-получает level
+получает _level
 смотрит, есть ли он в levelsInfo
+
+и добавляет в levelsInfo[_level][] = индекс в childs.
+Если сделать  levelsInfo не только в SE2D (и кстати, пусть оно будет в _root)
+ ,а в каждом спрайте, то вот вам и пожалуйста.
+
+Итерируемся не помассиву, а по levelsInfo[_level]
+
+В целом ок, с TextField работает.
+
+Не понятно, как это будет работать с IDE.
+Допустим, на этапе поддержки кадров в клипах.
+ У нас нечетные станут вместо путей объектами.
+ в 0 объект путей (потому что ключевые кадры!), в 1 уровень.
+
+
+
+
+// Старая идея, оставил на всякий.
+
 Если нет, будет вызван простой push, а в levelsInfo[level] будет записана позиция (sprites|childs).length - 1
-Если есть, будет вызван U.arrayInsert(sprites, levelsInfo[level], mc); 
-  а в levelsInfo[level] будет записана levelsInfo[level]++
-
-
-Тут баг, надо инкрементить для всех последующих!
-
---------------------
-Как это дело рендерить.
-
-//Псевдокод
-
-for (i in levelsInfo) {
-	i = intval(i);
-	if (i == 0) {
-		for (j = 0; j <= levelsInfo[i]; j++) {
-			var sprite = sprites[j];
-			SE2D.draw(sprite);
-		}
-	} else {
-		for (j = levelsInfo[i - 1]; j <= levelsInfo[i]; j++) {
-			var sprite = sprites[j];
-			SE2D.draw(sprite);
-		}
-	}
-}
+Если есть, будет вызван U.arrayInsert(sprites, levelsInfo[level], mc); а в levelsInfo[level] будет записана levelsInfo[level]++
