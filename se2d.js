@@ -334,6 +334,7 @@ Sprite.prototype.initSprite = function (img, id, depth) {
 	this.sourceW = this.w = this._width  = img && img.width ? img.width : 0;
 	this.sourceH = this.h = this._height = img && img.height ? img.height : 0;
 	this._scaleX = this._scaleY = 1;
+	this.levelsInfo = [];
 	
 	/** @property {Number} Sprite.scaleX */
 	Object.defineProperty(this, 'scaleX', {
@@ -430,6 +431,8 @@ Sprite.prototype.clone = function (x, y, id, visible) {
 	SE2D.sprites.push(s);
 	
 	s.parentClip = SE2D._root;
+	s._level = o._level;
+	SE2D.setLevelInfo(s.parentClip, s, SE2D.sprites.length - 1);
 	
 	if (visible) {
 		s.visible = visible;
@@ -506,8 +509,10 @@ Sprite.prototype.addChild = function (sprite) {
 	}
 	sprite.depth = L;
 	sprite.parentClip = o;
+	sprite._level = sprite._level ? sprite._level : SE2D.DEFAULT_LEVEL;
 	c.push(sprite);
 	this.childsMap[sprite.id] = c.length - 1;
+	SE2D.setLevelInfo(o, sprite, c.length - 1); 
 }
 /**
  * @description Удалить ссылки на клип в родителе
@@ -735,7 +740,7 @@ function SimpleEngine2D (canvasId, fps) {
 				o.parentClip = SE2D._root;
 				SE2D.sprites.push(o);
 				SE2D._root[id] = o;
-				
+				SE2D.setLevelInfo(this, sprite, SE2D.sprites.length - 1);
 				SE2D.sortByDepth();
 			},
 			isRoot: true
@@ -744,9 +749,8 @@ function SimpleEngine2D (canvasId, fps) {
 		this.__images_length = -1;
 		//для оптимизации расчета столкновений
 		this.gridCell; //Если определено, лучше использовать Sprite.go(x,y) для установки координат спрайта
-		/** @property {levelsInfo} Хранит данные о том, сколько всего level в _root.sprites и номера позиций для каждого  
-		   Например  если пять спрайтов на уровне 0 и 2 на уровне 1 {0: 4, 1:1}*/
-		this.levelsInfo = {};
+		/** @property {levelsInfo} Хранит данные о том, сколько всего level в _root.sprites*/
+		this._root.levelsInfo = [];
 		/** @property {Number} DEFAULT_LEVEL хранит уровень по умолчанию, который будет рисваиваться Sprite._level*/
 		this.DEFAULT_LEVEL = 0;
 		setInterval(this.tick, 1000 / fps);
@@ -758,13 +762,19 @@ SimpleEngine2D.prototype.onEnterFrame = function () {}
 SimpleEngine2D.prototype.onLoadImages = function () {}
 SimpleEngine2D.prototype.onLoadRastrResource = function () {}
 SimpleEngine2D.prototype.tick = function () {
-	var sz = SE2D.sprites.length, i, spr;
+	var sz = SE2D.sprites.length, i, j, k, spr;
 	SE2D.c.clearRect(0, 0, SE2D.w, SE2D.h);
-	for (i = 0; i < sz; i +=1) {
-		spr = SE2D.sprites[i];
-		if (spr.visible != false) {
-			SE2D.draw(spr);
-			spr.setMouseXY();
+	
+	for (j = 0; j < SE2D._root.levelsInfo.length; j +=1) {
+		if (SE2D._root.levelsInfo[j]) {
+			for (k = 0; k < SE2D._root.levelsInfo[j].length; k++) {
+				i = SE2D._root.levelsInfo[j][k];
+				spr = SE2D.sprites[i];
+				if (spr.visible != false) {
+					SE2D.draw(spr);
+					spr.setMouseXY();
+				}
+			}
 		}
 	}
 	SE2D.onEnterFrame();
@@ -776,7 +786,7 @@ SimpleEngine2D.prototype.tick = function () {
  * @param {Number} offsetY
 */
 SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
-	var arr = s.childs, i, L = arr.length,
+	var arr = s.childs, i, j, k, L = arr.length,
 		parentScx, parentScy, o,
 		parentScXForPos,
 		rt, crt, x, y, w, h, tx, ty,
@@ -803,8 +813,7 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 		}
 	}
 	
-	
-	
+	// TODO кажется, что можно выпилить, но пока страшно.
 	lvl = +lvl ? +lvl : 0;
 	
 	if (s instanceof TextField) {
@@ -824,6 +833,7 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 		c.fillStyle = sFColor;
 		c.strokeStyle = sColor;
 	}
+	
 	
 	if (s.img) {
 		if (!s.fixSize) {
@@ -859,9 +869,14 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
 		SE2D.drawGraphics(s.graphics, (s.x + offsetX) * parentScx, (s.y + offsetY) * parentScy, (s.id == 's1'));
 	}
 	
-	for (i = 0; i < L; i++) {
-		if (arr[i].visible) {
-			SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
+	for (j = 0; j < s.levelsInfo.length; j +=1) {
+		if (s.levelsInfo[j]) {
+			for (k = 0; k < s.levelsInfo[j].length; k++) {
+				i = s.levelsInfo[j][k];
+				if (arr[i].visible) {
+					SE2D.draw(arr[i], (s.x + offsetX), (s.y + offsetY), lvl + 1);
+				}
+			}
 		}
 	}
 }
@@ -869,6 +884,8 @@ SimpleEngine2D.prototype.draw = function(s, offsetX, offsetY, lvl) {
  * @description Переставляет спрайты в соответсвии со значением параметра depth
 */
 SimpleEngine2D.prototype.sortByDepth = function () {
+	var i, sz, cr;
+	sz = SE2D.sprites.length;
 	SE2D.sprites.sort(function(i, j) {
 		if (i.depth < j.depth) {
 			return -1;
@@ -880,6 +897,15 @@ SimpleEngine2D.prototype.sortByDepth = function () {
 			return 0;
 		}
 	});
+	for (i = 0; i < sz; i++) {
+		SE2D.sprites[i].parentClip.levelsInfo = [];
+		SE2D.sprites[i].levelsInfo = [];
+	}
+	
+	for (i = 0; i < sz; i++) {
+		cr = SE2D.sprites[i];
+		SE2D.setLevelInfo(cr.parentClip, cr, i);
+	}
 }
 /**
  * @param {String} path to image
@@ -933,6 +959,8 @@ SimpleEngine2D.prototype.onLoadImage = function () {
 	var img = this, se2d = img.se2d, o = new Sprite(img, img.id, img.depth);
 	se2d._root[img.id] = o;
 	se2d.sprites.push(o);
+	o._level = o._level ? o._level : SE2D.DEFAULT_LEVEL;
+	SE2D.setLevelInfo(se2d._root, o, se2d.sprites.length - 1);
 	o.parentClip = se2d._root;
 	se2d.__images_count--;
 	SE2D.onLoadRastrResource(img.id);
@@ -1142,6 +1170,13 @@ SimpleEngine2D.prototype.parseColor = function(c) {
 	}
 	c = '#' + c;
 	return c;
+}
+
+SimpleEngine2D.prototype.setLevelInfo = function (_parent, sprite, idx) {
+	if (!_parent.levelsInfo[sprite._level]) {
+		_parent.levelsInfo[sprite._level] = [];
+	}
+	_parent.levelsInfo[sprite._level].push(idx);
 }
 
 function E(i) {return document.getElementById(i)}
